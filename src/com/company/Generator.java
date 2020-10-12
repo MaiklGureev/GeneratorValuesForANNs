@@ -1,192 +1,115 @@
 package com.company;
 
-import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 public class Generator {
 
     int countExperiments;
-    boolean isTheftInPorch;
+    boolean isTheftHouse;
     int totalCount;
+    int countApartments;
+    List<TypeApartment> typeApartmentListList = new ArrayList<>();
+    List<Porch> porchList = new ArrayList<>();
 
-    int countPorch;
-    int countTypeApartmentOne;
-    int countTypeApartmentTwo;
-    int countTypeApartmentThree;
-    int countTheftInPorch;
+    public Generator(int countExperiments) {
+        this.countExperiments = countExperiments;
+    }
 
-    double valuePorch;
-    double valueTypeApartmentOne;
-    double valueTypeApartmentTwo;
-    double valueTypeApartmentThree;
-    double valueTheftInPorch;
+    public void addNewTypeApartment(TypeApartment typeApartment) {
+        typeApartmentListList.add(typeApartment);
+    }
 
-    double valueTypeApartmentOneWeekend;
-    double valueTypeApartmentTwoWeekend;
-    double valueTypeApartmentThreeWeekend;
-
-    int dispersionPorch;
-    int dispersionTypeOne;
-    int dispersionTypeTwo;
-    int dispersionTypeThree;
-
-    int dispersionTypeTwoWeekend;
-    int dispersionTypeOneWeekend;
-    int dispersionTypeThreeWeekend;
-
-    int dispersionTheftValueInPorch;
-
-    public Generator() {
+    public void addNewPorch(Porch simplePorch) {
+        porchList.add(simplePorch);
     }
 
     public void init() {
-        totalCount = 2 + 7 * (countTypeApartmentOne + countTypeApartmentTwo + countTypeApartmentThree + 1);
+        //подсчёт числа квартир разных типов
+        for (TypeApartment typeApartment : typeApartmentListList) {
+            countApartments += typeApartment.getCountAllApartments();
+        }
+        totalCount = 2 + 7 * (countApartments + 1);
     }
 
     public String[][] doExperiment() {
+
         init();
 
         String[][] values = new String[countExperiments][totalCount];
         double v;
-        double totalSum = 0;
+        double totalSumOfTheDay = 0;
         int counterTheft = 0;
         int counter = 0;
         String progress;
 
         //цикл заполняющий строки
         for (int a = 0; a < countExperiments; a++) {
-            
-            totalSum = 0;
-            
-            //прогресс бар
-            if (a % 150 == 0 || a==countExperiments-1) {
-                progress = String.format("%d/%d",a,countExperiments);
-                System.out.println(progress);
-            }
 
             int b = 0;
 
-            //подъезд
-            for (int p = 0; p < countPorch; p++) {
-                //цикл по неделе
-                for (int w = 0; w < 7; w++) {
-                    v = getGaussianRandomValue(valuePorch, dispersionPorch);
-                    totalSum += v;
-                }
+            //прогресс бар
+            if (a % 150 == 0 || a == countExperiments - 1) {
+                progress = String.format("%d/%d", a, countExperiments);
+                System.out.println(progress);
             }
 
-            if (isTheftInPorch) {
-                if (getEvenDistributionRandomBoolean()) {
-                    //цикл по ворующим подъездам
-                    for (int p = 0; p < countTheftInPorch; p++) {
-                        //цикл по неделе
-                        for (int w = 0; w < 7; w++) {
-                                v = getGaussianRandomValue(valueTheftInPorch, dispersionTheftValueInPorch);
-                                totalSum += v;
-                        }
-                    }
-                    values[a][b] = "1";
-                    counterTheft++;
-                }
-                else {
-                    values[a][b] = "0";
-                    counter++;
-                }
+            boolean isTheftExperiment;
+            if (Utils.getEvenDistributionRandomBoolean()) {
+                values[a][b] = "1";
+                isTheftExperiment = true;
+                counterTheft++;
+            } else {
+                isTheftExperiment = false;
+                values[a][b] = "0";
+                counter++;
             }
+
+            //выставляем параметр эксперимента (воровство/неворовство)
+            for (int t = 0; t<typeApartmentListList.size();t++) {
+                typeApartmentListList.get(t).setTheftExperiment(isTheftExperiment);
+            }
+
             b++;
 
             values[a][b] = "st.ABL_" + new Random().nextInt(totalCount);
             b++;
 
-            //цикл для будних
-            for (int w = 0; w < 5; w++) {
 
-                //первый тип квартир
-                for (int i = 0; i < countTypeApartmentOne; i++) {
-                    v = getGaussianRandomValue(valueTypeApartmentOne, dispersionTypeOne);
-                    values[a][b] = String.valueOf(v);
-                    totalSum += v;
-                    b++;
-                }
-                //второй тип квартир
-                for (int i = 0; i < countTypeApartmentTwo; i++) {
-                    v = getGaussianRandomValue(valueTypeApartmentTwo, dispersionTypeTwo);
-                    values[a][b] = String.valueOf(v);
-                    totalSum += v;
-                    b++;
-                }
-                //третий тип квартир
-                for (int i = 0; i < countTypeApartmentThree; i++) {
-                    v = getGaussianRandomValue(valueTypeApartmentThree, dispersionTypeThree);
-                    values[a][b] = String.valueOf(v);
-                    totalSum += v;
-                    b++;
-                }
-
-                //итоговое значение за сутки
-                values[a][b] = roundDouble(totalSum);
-                b++;
+            List<double[][]> tempMatrixList = new ArrayList<>();
+            for (TypeApartment typeApartment : typeApartmentListList) {
+                tempMatrixList.add(typeApartment.getStringMatrix());
             }
 
-            //цикл для выходных
-            for (int w = 0; w < 2; w++) {
-                //первый тип квартир
-                for (int i = 0; i < countTypeApartmentOne; i++) {
-                    v = getGaussianRandomValue(valueTypeApartmentOneWeekend, dispersionTypeOneWeekend);
-                    values[a][b] = String.valueOf(v);
-                    totalSum += v;
-                    b++;
+            for (int dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) {
+
+                //подъезд
+                for (Porch p : porchList) {
+                    v = p.calculateConsumption();
+                    totalSumOfTheDay += v;
                 }
-                //второй тип квартир
-                for (int i = 0; i < countTypeApartmentTwo; i++) {
-                    v = getGaussianRandomValue(valueTypeApartmentTwoWeekend, dispersionTypeTwoWeekend);
-                    values[a][b] = String.valueOf(v);
-                    totalSum += v;
-                    b++;
+
+                //квартиры
+                for (double[][] var : tempMatrixList) {
+                    int columns = var[0].length;
+                    totalSumOfTheDay += var[dayOfWeek][columns - 1];
+                    for (int j = 0; j < columns - 1; j++) {
+                        values[a][b] = Utils.roundDouble(var[dayOfWeek][j]);
+                        b++;
+                    }
                 }
-                //третий тип квартир
-                for (int i = 0; i < countTypeApartmentThree; i++) {
-                    v = getGaussianRandomValue(valueTypeApartmentThreeWeekend, dispersionTypeThreeWeekend);
-                    values[a][b] = String.valueOf(v);
-                    totalSum += v;
-                    b++;
-                }
-                //итоговое значение за сутки
-                values[a][b] = roundDouble(totalSum);
+                values[a][b] = Utils.roundDouble(totalSumOfTheDay);
                 b++;
+                totalSumOfTheDay = 0;
+
             }
+
+
         }
-        System.out.println("Записей без воровства "+counter);
-        System.out.println("Записей с воровством "+counterTheft);
+        System.out.println("Записей без воровства " + counter);
+        System.out.println("Записей с воровством " + counterTheft);
         return values;
-    }
-
-
-    public double getGaussianRandomValue(double value, int dispersion) {
-        double a = value - value * dispersion / 100;
-        a = a > 0 ? a : 0.01;
-        double b = value + value * dispersion / 100;
-
-        Random random = new Random();
-        double random_num = a + random.nextGaussian() * (b - a);
-
-        while (random_num < a || random_num > b) {
-            random_num = getGaussianRandomValue(value, dispersion);
-        }
-//        System.out.println(String.valueOf(random_num));
-        return Double.parseDouble(roundDouble(random_num));
-    }
-
-    public boolean getEvenDistributionRandomBoolean() {
-        Random random = new Random();
-        boolean random_val = random.nextBoolean();
-        return random_val;
-    }
-
-    public String roundDouble(double value) {
-        DecimalFormat decimalFormat = new DecimalFormat("#.##");
-        String result = decimalFormat.format(value).replace(",", ".");
-        return result;
     }
 
 
